@@ -1,6 +1,6 @@
 # VoiceROI Terminal
 
-Next.js (App Router) dashboard with liquid-style UI, auth, and API key management.
+Next.js (App Router) dashboard with liquid-style UI, auth, API key management, and Supabase database for live data.
 
 ## Auth & roles
 
@@ -8,30 +8,63 @@ Next.js (App Router) dashboard with liquid-style UI, auth, and API key managemen
 - **Admin**: Default account `admin@voiceroi.local` / `admin`. Admins can create client accounts and see the Admin page.
 - **Clients**: Created by an admin (email + password). On first login they are sent through onboarding to add API keys; then they can use the dashboard and Settings.
 
-## API Session – what it connects to (long-term)
+## Database & Live Data
 
-**In this app (demo):**  
-“Connect Dashboard” is a **demo action**: it toggles a local “Connected” / “Backend unavailable” state. No real external service is called. API keys you enter in **Settings** or **Onboarding** are stored in memory (per user) and are not yet used to call Twilio or any CRM.
+The app now uses **Supabase PostgreSQL** to store:
+- Tenant credentials (Twilio, Vapi, Make.com API keys)
+- Call logs from Twilio webhooks
+- Conversation data (intent, outcome) from Vapi webhooks
+- Bookings from Make.com webhooks
+- Revenue settings per client
 
-**In a production / “real state” setup you would:**
+**See `docs/DATABASE_SETUP.md` for complete setup instructions.**
 
-1. **Validate and use the stored keys** when the user clicks “Connect Dashboard”:
-   - Call Twilio’s API (e.g. list projects or validate credentials) with `twilioAccountSid` + `twilioAuthToken`.
-   - Optionally ping your `crmEndpoint` or webhook with the `webhookSecret` to confirm the integration is reachable.
-2. **Persist keys** in a secure backend (e.g. DB or vault), not in memory, and never send them to the client except when needed for a one-time setup.
-3. **Run background jobs** that use those keys to sync call data, update KPIs, and fill the Conversation Pipeline from Twilio (or your telephony provider) and your CRM.
-4. **Keep “API Session”** as the concept of “this dashboard is linked to this Twilio/CRM tenant”; the cookie/session identifies the user, and the backend resolves which API keys and tenant to use for that user.
+## API Session & Data Flow
 
-So: **API Session** = “this dashboard instance is connected to your voice/CRM backend.” Long-term, that connection is implemented by your server using the user’s stored API keys to talk to Twilio, your CRM, and webhooks; the dashboard then just shows data that the backend has synced.
+When a client saves their API keys in Settings, they're stored securely in the database. The dashboard displays live data from:
 
-## Run
+1. **Twilio** → Webhook receives call data → Stored in `calls` table
+2. **Vapi** → Webhook receives conversation analysis → Stored in `conversations` table
+3. **Make.com** → Webhook receives booking confirmations → Stored in `bookings` table
 
-```bash
-npm install
-npm run dev
-```
+Dashboard KPIs and the Conversation Pipeline are computed from this data in real-time.
 
-Open `http://localhost:3000` → redirects to `/login`. Use `admin@voiceroi.local` / `admin` to sign in as admin.
+## Setup
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Configure Supabase:**
+   - Create a Supabase project at [supabase.com](https://supabase.com)
+   - Copy your Project URL and Anon Key
+   - Add to `.env.local`:
+     ```bash
+     NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+     SESSION_SECRET=your-secret-here
+     ```
+   - Database schema is already migrated automatically
+
+3. **Run development server:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Access the app:**
+   - Open `http://localhost:3000`
+   - Log in as admin: `admin@voiceroi.local` / `admin`
+
+## Webhook Setup
+
+Configure webhooks in your external services to send data to the app:
+
+- **Twilio:** `/api/webhooks/twilio`
+- **Vapi:** `/api/webhooks/vapi`
+- **Make.com:** `/api/webhooks/make`
+
+See `docs/DATABASE_SETUP.md` for detailed webhook configuration.
 
 ## Build
 
@@ -39,5 +72,5 @@ Open `http://localhost:3000` → redirects to `/login`. Use `admin@voiceroi.loca
 npm run build
 ```
 
-Deploys cleanly on Vercel. No database required; users and API keys are in-memory (reset on deploy/cold start). For production you’d replace the in-memory stores with a DB and a secrets manager.
+Deploys on Vercel with Supabase database. User accounts are still in-memory (for demo), but all data (calls, conversations, bookings) is persisted in the database.
 # Desktop
