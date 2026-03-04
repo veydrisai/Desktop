@@ -1,0 +1,129 @@
+.settings-main {
+  max-width: 600px;
+}
+
+.settings-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.settings-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px 0;
+}
+
+.settings-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.settings-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.settings-help {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0 0 12px 0;
+  line-height: 1.45;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-field .auth-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.settings-field .auth-input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.settings-field .auth-input:focus {
+  outline: none;
+  border-color: var(--green-accent);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.settings-links-detail {
+  margin-bottom: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.settings-links-summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-links-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-links-list {
+  margin: 8px 0 0 0;
+  padding: 0 0 0 16px;
+  list-style: disc;
+}
+
+.settings-links-list li {
+  margin-bottom: 6px;
+}
+
+.settings-link {
+  color: var(--green-accent);
+  text-decoration: none;
+}
+
+.settings-link:hover {
+  text-decoration: underline;
+}
+
+.settings-link-note {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  margin-left: 0;
+}
+
+.settings-code {
+  font-size: 11px;
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}

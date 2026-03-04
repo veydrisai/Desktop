@@ -1,0 +1,124 @@
+.admin-main {
+  max-width: 600px;
+}
+
+.admin-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.admin-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px 0;
+}
+
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.admin-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 10px 0;
+  letter-spacing: -0.02em;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-msg-ok {
+  font-size: 13px;
+  color: var(--green-accent);
+  margin: 0;
+}
+
+.admin-muted {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 12px;
+}
+
+.admin-list-item:last-child {
+  border-bottom: none;
+}
+
+.admin-list-email {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.admin-list-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.admin-list-badge.done {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--green-accent);
+}
+
+.admin-list-badge.pending {
+  background: var(--bg-card-hover);
+  color: var(--text-muted);
+}
+
+.admin-modules {
+  margin-top: 2px;
+}
+
+.admin-modules-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 8px 0;
+}
+
+.admin-module-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.admin-module-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green-accent);
+}

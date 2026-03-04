@@ -1,0 +1,40 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* iOS-style transitions */
+.liquid-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.liquid-card:hover {
+  transform: translateY(-1px);
+}
+
+.liquid-btn {
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.liquid-btn:hover {
+  transform: scale(1.01);
+}
+
+.liquid-btn:active {
+  transform: scale(0.98);
+}

@@ -1,0 +1,88 @@
+.onboarding-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.onboarding-dot.active {
+  background: #22c55e;
+  transform: scale(1.25);
+}
+
+.onboarding-step {
+  margin-bottom: 24px;
+}
+
+.onboarding-step-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #fafafa;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-p {
+  font-size: 15px;
+  color: #a1a1aa;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.onboarding-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.onboarding-back {
+  padding: 10px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #a1a1aa;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s ease;
+}
+
+.onboarding-back:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e4e4e7;
+}
+
+.onboarding-back:active {
+  transform: scale(0.98);
+}
