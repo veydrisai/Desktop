@@ -6,7 +6,10 @@ import { getRevenueSettings, setRevenueSettings, type RevenueSettings } from '@/
 type RouteParams = { clientId: string }
 
 async function getClientId(params: RouteParams | Promise<RouteParams>): Promise<string | null> {
-  const resolved = typeof (params as Promise<RouteParams>).then === 'function' ? await (params as Promise<RouteParams>) : params
+  const resolved: RouteParams =
+    typeof (params as Promise<RouteParams>).then === 'function'
+      ? await (params as Promise<RouteParams>)
+      : (params as RouteParams)
   return resolved?.clientId ?? null
 }
 
