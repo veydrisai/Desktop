@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import {
   initialKPIs,
   emptyRevenueSeries,
@@ -34,6 +34,21 @@ type DemoSessionContextValue = DemoSessionState & {
 
 const DemoSessionContext = createContext<DemoSessionContextValue | null>(null)
 
+async function fetchDashboardData(): Promise<{ kpis: KPIs; pipelineRows: PipelineRow[]; lastSync: string } | null> {
+  try {
+    const res = await fetch('/api/dashboard/data', { credentials: 'include' })
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      kpis: data.kpis ?? initialKPIs,
+      pipelineRows: Array.isArray(data.pipelineRows) ? data.pipelineRows : emptyPipeline,
+      lastSync: data.lastSync ?? defaultLastSync,
+    }
+  } catch {
+    return null
+  }
+}
+
 export function DemoSessionProvider({ children, initialLoggedIn = false }: { children: React.ReactNode; initialLoggedIn?: boolean }) {
   const [state, setState] = useState<DemoSessionState>({
     loggedIn: initialLoggedIn,
@@ -43,6 +58,22 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
     lastSync: defaultLastSync,
     connectStatus: 'idle',
   })
+
+  const loadDashboardData = useCallback(async () => {
+    const data = await fetchDashboardData()
+    if (data) {
+      setState((prev) => ({
+        ...prev,
+        kpis: data.kpis,
+        pipelineRows: data.pipelineRows,
+        lastSync: data.lastSync,
+      }))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (state.loggedIn) loadDashboardData()
+  }, [state.loggedIn, loadDashboardData])
 
   const setLoggedIn = useCallback((value: boolean) => {
     setState((prev) => {
@@ -66,7 +97,12 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
     }))
   }, [])
 
-  const refreshData = useCallback(() => {
+  const refreshData = useCallback(async () => {
+    const data = await fetchDashboardData()
+    if (data) {
+      setState((prev) => ({ ...prev, ...data }))
+      return
+    }
     setState((prev) => ({
       ...prev,
       lastSync: 'Just now',
@@ -84,6 +120,19 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
         return rowId === id ? { ...row, id: row.id ?? id, ...updates } : row
       }),
     }))
+
+    if (!id.startsWith('legacy_') && (updates.intent !== undefined || updates.outcome !== undefined || updates.revenue !== undefined)) {
+      fetch(`/api/dashboard/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          intent: updates.intent,
+          outcome: updates.outcome,
+          revenue: updates.revenue,
+        }),
+      }).catch(() => {})
+    }
   }, [])
 
   const value: DemoSessionContextValue = {

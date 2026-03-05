@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase'
+import { getSql } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,35 +19,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing call identifier' }, { status: 400 })
     }
 
-    const supabase = createServerClient()
-
-    const { data: existingCall } = await supabase
-      .from('calls')
-      .select('id, tenant_id')
-      .eq('call_sid', callSid)
-      .maybeSingle()
-
+    const sql = getSql()
+    const callRows = await sql`
+      SELECT id, tenant_id FROM calls WHERE call_sid = ${callSid} LIMIT 1`
+    const existingCall = (callRows as { id: string; tenant_id: string }[])[0]
     if (!existingCall) {
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
-    const { error } = await supabase
-      .from('conversations')
-      .insert({
-        tenant_id: existingCall.tenant_id,
-        call_id: existingCall.id,
-        external_id: callId,
-        intent,
-        outcome,
-        duration_sec: duration,
-        revenue_cents: 0,
-        metadata: body
-      })
-
-    if (error) {
-      console.error('Vapi webhook error:', error)
-      return NextResponse.json({ error: 'Failed to store conversation' }, { status: 500 })
-    }
+    await sql`
+      INSERT INTO conversations (tenant_id, call_id, external_id, intent, outcome, duration_sec, revenue_cents, metadata)
+      VALUES (${existingCall.tenant_id}, ${existingCall.id}, ${callId}, ${intent}, ${outcome}, ${duration}, 0, ${JSON.stringify(body)}::jsonb)`
 
     return NextResponse.json({ success: true, callId })
   } catch (error) {

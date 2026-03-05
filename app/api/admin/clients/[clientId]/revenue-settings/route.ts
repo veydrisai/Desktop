@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseSessionCookie, SESSION_COOKIE } from '@/lib/auth'
 import { getUserById } from '@/lib/userStore'
-import { createServerClient } from '@/lib/supabase'
+import { getSql } from '@/lib/db'
+import { getOrCreateTenant, getTenantByUserId } from '@/lib/db-helpers'
 
 type RouteParams = { clientId: string }
 type RevenueSettings = {
@@ -35,26 +36,20 @@ export async function GET(
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
-  const supabase = createServerClient()
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', clientId)
-    .maybeSingle()
-
+  const tenant = await getTenantByUserId(clientId)
   if (!tenant) {
     return NextResponse.json({ settings: {} })
   }
 
-  const { data: settings } = await supabase
-    .from('tenant_settings')
-    .select('*')
-    .eq('tenant_id', tenant.id)
-    .maybeSingle()
+  const sql = getSql()
+  const rows = await sql`
+    SELECT default_revenue_per_booking, currency
+    FROM tenant_settings WHERE tenant_id = ${tenant.id} LIMIT 1`
+  const s = (rows as { default_revenue_per_booking: number; currency: string }[])[0]
 
-  const result = settings ? {
-    defaultRevenuePerBooking: settings.default_revenue_per_booking || 0,
-    currency: settings.currency || 'USD',
+  const result = s ? {
+    defaultRevenuePerBooking: s.default_revenue_per_booking ?? 0,
+    currency: s.currency ?? 'USD',
   } : {}
 
   return NextResponse.json({ settings: result })
@@ -85,50 +80,22 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const supabase = createServerClient()
-  const { data: existingTenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', clientId)
-    .maybeSingle()
+  const tenantId = await getOrCreateTenant({
+    userId: clientId,
+    email: user.email,
+    role: user.role,
+    onboardingComplete: user.onboardingComplete,
+    allowedModules: user.allowedModules,
+  })
 
-  let tenantId: string
-
-  if (!existingTenant) {
-    const { data: newTenant, error: tenantError } = await supabase
-      .from('tenants')
-      .insert({
-        user_id: clientId,
-        email: user.email,
-        role: user.role,
-        onboarding_complete: user.onboardingComplete,
-        allowed_modules: user.allowedModules || ['performance', 'analytics', 'system']
-      })
-      .select('id')
-      .single()
-
-    if (tenantError || !newTenant) {
-      return NextResponse.json({ error: 'Failed to create tenant' }, { status: 500 })
-    }
-    tenantId = newTenant.id
-  } else {
-    tenantId = existingTenant.id
-  }
-
-  const { error } = await supabase
-    .from('tenant_settings')
-    .upsert({
-      tenant_id: tenantId,
-      default_revenue_per_booking: body.defaultRevenuePerBooking || 0,
-      currency: body.currency || 'USD',
-    }, {
-      onConflict: 'tenant_id'
-    })
-
-  if (error) {
-    console.error('Failed to save settings:', error)
-    return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
-  }
+  const sql = getSql()
+  await sql`
+    INSERT INTO tenant_settings (tenant_id, default_revenue_per_booking, currency)
+    VALUES (${tenantId}, ${body.defaultRevenuePerBooking ?? 0}, ${body.currency ?? 'USD'})
+    ON CONFLICT (tenant_id) DO UPDATE SET
+      default_revenue_per_booking = EXCLUDED.default_revenue_per_booking,
+      currency = EXCLUDED.currency,
+      updated_at = now()`
 
   return NextResponse.json({ ok: true })
 }

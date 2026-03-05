@@ -1,12 +1,12 @@
 # VoiceROI Terminal – Database Setup Guide
 
-Complete guide for setting up and using the Supabase database for live data management.
+Complete guide for setting up and using the Neon PostgreSQL database for live data management.
 
 ---
 
 ## Overview
 
-The VoiceROI Terminal now uses **Supabase PostgreSQL** to store and manage all live data from:
+The VoiceROI Terminal uses **Neon PostgreSQL** to store and manage all live data from:
 
 - **Twilio** (call logs and volume)
 - **Vapi** (conversation AI with intents and outcomes)
@@ -85,27 +85,23 @@ All data is multi-tenant, meaning each client only sees their own data.
 
 ## Setup Instructions
 
-### 1. Get Supabase credentials
+### 1. Get Neon connection string
 
-1. Go to [supabase.com](https://supabase.com) and create a project
-2. Navigate to **Settings** → **API**
-3. Copy your:
-   - **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`)
-   - **Anon public key** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+1. Go to [neon.tech](https://neon.tech) and create a project
+2. In the dashboard, copy your **connection string** (pooled recommended for serverless)
 
 ### 2. Add to `.env.local`
 
 Create or update `.env.local` in the project root:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 SESSION_SECRET=your-session-secret-change-in-production
 ```
 
-### 3. Database is already migrated
+### 3. Run the schema in Neon
 
-The database schema was created via the migration in this project. You don't need to run any SQL manually.
+In Neon’s **SQL Editor**, run the contents of `neon/schema.sql` in your project (creates tables, indexes, triggers). Do this once per project.
 
 ### 4. Test the connection
 
@@ -270,23 +266,7 @@ The dashboard now fetches live data from the database instead of using mock data
 
 ## Security
 
-### Row Level Security (RLS)
-
-All tables have RLS enabled. Tenants can only access their own data.
-
-**Example policy (on `calls`):**
-```sql
-CREATE POLICY "Users can view own calls"
-  ON calls FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM tenants
-      WHERE tenants.id = calls.tenant_id
-      AND tenants.user_id = auth.jwt()->>'user_id'
-    )
-  );
-```
+Tenant isolation is enforced in the application: every API route resolves the tenant from the session and filters queries by `tenant_id`. The Neon schema does not use Row Level Security so it works with any Postgres host.
 
 ### Credentials
 
@@ -296,13 +276,13 @@ API keys (`twilio_auth_token`, `vapi_api_key`, `webhook_secret`) are stored in `
 
 ## Migration to Database
 
-The app still uses in-memory user authentication (`lib/userStore.ts`) but all **data** (calls, conversations, bookings, settings) is now stored in Supabase.
+The app still uses in-memory user authentication (`lib/userStore.ts`) but all **data** (calls, conversations, bookings, settings) is stored in Neon.
 
 **What's still in-memory:**
 - User accounts (email, password hash, role)
 - Session management
 
-**What's in Supabase:**
+**What's in Neon:**
 - Tenant records (synced from users)
 - API credentials
 - Revenue settings
@@ -314,7 +294,7 @@ The app still uses in-memory user authentication (`lib/userStore.ts`) but all **
 
 ### No data showing in dashboard
 
-1. Check that you've added Supabase credentials to `.env.local`
+1. Check that you've added `DATABASE_URL` (Neon connection string) to `.env.local`
 2. Verify webhooks are configured correctly in Twilio, Vapi, and Make.com
 3. Check browser console and server logs for errors
 4. Test webhook endpoints manually with curl:
@@ -336,7 +316,7 @@ To get your `tenantId` for Make.com webhooks:
 1. Log in to your dashboard
 2. Open browser console
 3. Run: `await fetch('/api/auth/session', {credentials: 'include'}).then(r => r.json())`
-4. Or query Supabase directly: `SELECT id FROM tenants WHERE email = 'your@email.com'`
+4. Or query Neon (e.g. SQL Editor): `SELECT id FROM tenants WHERE email = 'your@email.com'`
 
 ---
 

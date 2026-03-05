@@ -57,7 +57,7 @@ export default function LoginPage() {
       <div className="auth-bg" />
       <div className="auth-card liquid-card">
         <h1 className="auth-title">VoiceROI Terminal</h1>
-        <p className="auth-subtitle">Sign in to your account</p>
+        <p className="auth-subtitle">Sign in to your account. No sign-up—accounts are created by your admin.</p>
         <form onSubmit={handleSubmit} className="auth-form">
           <label className="auth-label">Email</label>
           <input
@@ -85,7 +85,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="auth-hint">
-          Admin demo: admin@voiceroi.local / admin
+          No public sign-up. Get an account from your admin. Demo: admin@voiceroi.local / admin
         </p>
       </div>
     </div>

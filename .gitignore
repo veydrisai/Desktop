@@ -12,6 +12,8 @@ dist
 # Data (contains hashed passwords – do not commit)
 data/users.json
 data/
+# Exception: dashboard API route path (not the data folder)
+!app/api/dashboard/data/
 
 # Env
 .env

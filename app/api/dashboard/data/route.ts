@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { parseSessionCookie, SESSION_COOKIE } from '@/lib/auth'
+import { getSql } from '@/lib/db'
+import { getTenantByUserId } from '@/lib/db-helpers'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
+  const cookie = request.cookies.get(SESSION_COOKIE)?.value
+  const session = parseSessionCookie(cookie)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const tenant = await getTenantByUserId(session.userId)
+  if (!tenant) {
+    return NextResponse.json({
+      kpis: {
+        dailyCallVolume: 0,
+        confirmedBookings: 0,
+        projectedRevenue: 0,
+        weeklyCallVolume: 0,
+        weeklySalesYield: 0,
+        monthlyGrossYield: 0,
+      },
+      pipelineRows: [],
+      lastSync: 'No data yet',
+    })
+  }
+
+  const sql = getSql()
+  const tenantId = tenant.id
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const weekStart = new Date(now)
+  weekStart.setDate(weekStart.getDate() - 7)
+  const monthStart = new Date(now)
+  monthStart.setDate(monthStart.getDate() - 30)
+
+  const [dailyCalls] = (await sql`
+    SELECT COUNT(*)::int AS c FROM calls
+    WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart}`) as { c: number }[]
+  const [dailyBookings] = (await sql`
+    SELECT COUNT(*)::int AS c, COALESCE(SUM(value_cents), 0)::int AS rev FROM bookings
+    WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart} AND status != 'cancelled'`) as { c: number; rev: number }[]
+  const [weeklyCalls] = (await sql`
+    SELECT COUNT(*)::int AS c FROM calls
+    WHERE tenant_id = ${tenantId} AND created_at >= ${weekStart.toISOString()}`) as { c: number }[]
+  const [weeklyBookings] = (await sql`
+    SELECT COUNT(*)::int AS c FROM bookings
+    WHERE tenant_id = ${tenantId} AND created_at >= ${weekStart.toISOString()} AND status != 'cancelled'`) as { c: number }[]
+  const [monthlyCalls] = (await sql`
+    SELECT COUNT(*)::int AS c FROM calls
+    WHERE tenant_id = ${tenantId} AND created_at >= ${monthStart.toISOString()}`) as { c: number }[]
+  const [monthlyBookings] = (await sql`
+    SELECT COUNT(*)::int AS c FROM bookings
+    WHERE tenant_id = ${tenantId} AND created_at >= ${monthStart.toISOString()} AND status != 'cancelled'`) as { c: number }[]
+
+  const dailyCallVolume = dailyCalls?.c ?? 0
+  const confirmedBookings = dailyBookings?.c ?? 0
+  const projectedRevenue = Math.round((dailyBookings?.rev ?? 0) / 100)
+  const weeklyCallVolume = weeklyCalls?.c ?? 0
+  const weeklySalesYield = weeklyCallVolume > 0 ? ((weeklyBookings?.c ?? 0) / weeklyCallVolume) * 100 : 0
+  const monthlyGrossYield = (monthlyCalls?.c ?? 0) > 0 ? ((monthlyBookings?.c ?? 0) / (monthlyCalls?.c ?? 1)) * 100 : 0
+
+  const pipelineRowsRaw = await sql`
+    SELECT c.id, c.created_at, call.from_number AS caller, c.intent, c.outcome, c.revenue_cents
+    FROM conversations c
+    LEFT JOIN calls call ON call.id = c.call_id
+    WHERE c.tenant_id = ${tenantId}
+    ORDER BY c.created_at DESC
+    LIMIT 50`
+  const pipelineRows = (pipelineRowsRaw as { id: string; created_at: Date; caller: string | null; intent: string | null; outcome: string | null; revenue_cents: number }[]).map((r) => ({
+    id: r.id,
+    time: new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    caller: r.caller ?? 'Unknown',
+    intent: r.intent ?? 'Unknown',
+    outcome: r.outcome ?? 'Unknown',
+    revenue: Math.round((r.revenue_cents ?? 0) / 100),
+  }))
+
+  const lastSync = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+
+  return NextResponse.json({
+    kpis: {
+      dailyCallVolume,
+      confirmedBookings,
+      projectedRevenue,
+      weeklyCallVolume,
+      weeklySalesYield: Math.round(weeklySalesYield * 10) / 10,
+      monthlyGrossYield: Math.round(monthlyGrossYield * 10) / 10,
+    },
+    pipelineRows,
+    lastSync,
+  })
+}

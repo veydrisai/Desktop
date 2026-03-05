@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseSessionCookie, SESSION_COOKIE } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase'
+import { getSql } from '@/lib/db'
+import { getOrCreateTenant, getTenantByUserId } from '@/lib/db-helpers'
 
 export async function GET(request: NextRequest) {
   const cookie = request.cookies.get(SESSION_COOKIE)?.value
@@ -9,30 +10,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createServerClient()
-
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', session.userId)
-    .maybeSingle()
-
+  const tenant = await getTenantByUserId(session.userId)
   if (!tenant) {
     return NextResponse.json({ keys: {} })
   }
 
-  const { data: credentials } = await supabase
-    .from('tenant_credentials')
-    .select('*')
-    .eq('tenant_id', tenant.id)
-    .maybeSingle()
+  const sql = getSql()
+  const credRows = await sql`
+    SELECT twilio_account_sid, twilio_auth_token, vapi_api_key, crm_endpoint, webhook_secret
+    FROM tenant_credentials WHERE tenant_id = ${tenant.id} LIMIT 1`
+  const cred = (credRows as Record<string, string | null>[])[0]
 
-  const keys = credentials ? {
-    twilioAccountSid: credentials.twilio_account_sid || '',
-    twilioAuthToken: credentials.twilio_auth_token || '',
-    vapiApiKey: credentials.vapi_api_key || '',
-    crmEndpoint: credentials.crm_endpoint || '',
-    webhookSecret: credentials.webhook_secret || '',
+  const keys = cred ? {
+    twilioAccountSid: cred.twilio_account_sid ?? '',
+    twilioAuthToken: cred.twilio_auth_token ?? '',
+    vapiApiKey: cred.vapi_api_key ?? '',
+    crmEndpoint: cred.crm_endpoint ?? '',
+    webhookSecret: cred.webhook_secret ?? '',
   } : {}
 
   return NextResponse.json({ keys })
@@ -46,54 +40,25 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json()
-  const supabase = createServerClient()
+  const tenantId = await getOrCreateTenant({
+    userId: session.userId,
+    email: session.email,
+    role: session.role,
+    onboardingComplete: session.onboardingComplete,
+    allowedModules: session.allowedModules,
+  })
 
-  const { data: existingTenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', session.userId)
-    .maybeSingle()
-
-  let tenantId: string
-
-  if (!existingTenant) {
-    const { data: newTenant, error: tenantError } = await supabase
-      .from('tenants')
-      .insert({
-        user_id: session.userId,
-        email: session.email,
-        role: session.role,
-        onboarding_complete: session.onboardingComplete,
-        allowed_modules: session.allowedModules || ['performance', 'analytics', 'system']
-      })
-      .select('id')
-      .single()
-
-    if (tenantError || !newTenant) {
-      return NextResponse.json({ error: 'Failed to create tenant' }, { status: 500 })
-    }
-    tenantId = newTenant.id
-  } else {
-    tenantId = existingTenant.id
-  }
-
-  const { error } = await supabase
-    .from('tenant_credentials')
-    .upsert({
-      tenant_id: tenantId,
-      twilio_account_sid: body.twilioAccountSid || null,
-      twilio_auth_token: body.twilioAuthToken || null,
-      vapi_api_key: body.vapiApiKey || null,
-      crm_endpoint: body.crmEndpoint || null,
-      webhook_secret: body.webhookSecret || null,
-    }, {
-      onConflict: 'tenant_id'
-    })
-
-  if (error) {
-    console.error('Failed to save credentials:', error)
-    return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 })
-  }
+  const sql = getSql()
+  await sql`
+    INSERT INTO tenant_credentials (tenant_id, twilio_account_sid, twilio_auth_token, vapi_api_key, crm_endpoint, webhook_secret)
+    VALUES (${tenantId}, ${body.twilioAccountSid || null}, ${body.twilioAuthToken || null}, ${body.vapiApiKey || null}, ${body.crmEndpoint || null}, ${body.webhookSecret || null})
+    ON CONFLICT (tenant_id) DO UPDATE SET
+      twilio_account_sid = EXCLUDED.twilio_account_sid,
+      twilio_auth_token = EXCLUDED.twilio_auth_token,
+      vapi_api_key = EXCLUDED.vapi_api_key,
+      crm_endpoint = EXCLUDED.crm_endpoint,
+      webhook_secret = EXCLUDED.webhook_secret,
+      updated_at = now()`
 
   return NextResponse.json({ ok: true })
 }

@@ -1,25 +1,25 @@
 # VoiceROI Terminal – Deployment Checklist
 
-Complete checklist for deploying the VoiceROI Terminal with Supabase database.
+Complete checklist for deploying the VoiceROI Terminal with Neon database.
 
 ---
 
-## 1. Supabase Setup
+## 1. Neon Setup
 
-- [ ] Create a Supabase project at [supabase.com](https://supabase.com)
-- [ ] Database schema is already migrated (automatic on first use)
-- [ ] Copy Project URL and Anon Key from Settings → API
-- [ ] Save credentials for next step
+- [ ] Create a Neon project at [neon.tech](https://neon.tech)
+- [ ] Run the schema once: paste contents of `neon/schema.sql` into Neon SQL Editor and run
+- [ ] Copy your **connection string** (pooled recommended for serverless)
 
 ---
 
 ## 2. Environment Variables
 
+**Important:** Pushing code does **not** send `.env.local` to Vercel. You must add environment variables in the Vercel dashboard (Project → Settings → Environment Variables).
+
 Add these to your deployment platform (Vercel, etc.):
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 SESSION_SECRET=generate-a-strong-random-secret
 ```
 
@@ -141,9 +141,8 @@ Test the complete flow:
 
 - [ ] Change SESSION_SECRET to a strong random value
 - [ ] Consider encrypting API keys in database (add encryption layer)
-- [ ] Enable Supabase Row Level Security (already enabled)
 - [ ] Use webhook signature verification for production
-- [ ] Set up database backups in Supabase
+- [ ] Set up database backups in Neon (dashboard or cron)
 - [ ] Enable HTTPS only (automatic on Vercel)
 - [ ] Review CORS settings for production
 
@@ -153,7 +152,7 @@ Test the complete flow:
 
 Monitor these areas:
 
-- **Supabase Dashboard**: Database usage, query performance
+- **Neon Dashboard**: Database usage, query performance
 - **Vercel Dashboard**: Function invocations, errors
 - **Webhook logs**: Check Twilio, Vapi, Make.com for delivery failures
 - **Application logs**: Check for database errors or API failures
@@ -164,9 +163,9 @@ Monitor these areas:
 
 ### No data showing in dashboard
 
-1. Check Supabase credentials are set correctly
+1. Check DATABASE_URL is set in Vercel (and correct)
 2. Verify webhooks are configured and firing
-3. Check Supabase logs for errors
+3. Check Neon and Vercel logs for errors
 4. Test webhook endpoints with curl (see DATABASE_SETUP.md)
 
 ### Webhook failures
@@ -178,10 +177,9 @@ Monitor these areas:
 
 ### Database connection errors
 
-1. Verify NEXT_PUBLIC_SUPABASE_URL is correct
-2. Check NEXT_PUBLIC_SUPABASE_ANON_KEY is valid
-3. Ensure RLS policies allow access
-4. Check Supabase project is not paused
+1. Verify DATABASE_URL is set and correct in Vercel env
+2. Ensure Neon project is not suspended (check billing/usage)
+3. Test connection from a serverless function (e.g. hit /api/dashboard/data)
 
 ---
 
@@ -190,7 +188,7 @@ Monitor these areas:
 1. Set up monitoring and alerting
 2. Configure custom domain
 3. Add backup and recovery procedures
-4. Plan for scaling (Supabase can handle high load)
+4. Plan for scaling (Neon scales with usage)
 5. Consider adding more modules (Nurture Pro, Review Booster)
 
 For detailed documentation, see:
