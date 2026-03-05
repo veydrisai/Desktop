@@ -7,8 +7,29 @@ import RefreshButton from './RefreshButton'
 import type { PipelineRow } from '@/lib/demoData'
 
 export default function ConversationPipelineTable() {
-  const { pipelineRows, updatePipelineRow } = useDemoSession()
+  const { pipelineRows, updatePipelineRow, refreshData } = useDemoSession()
   const [editingRow, setEditingRow] = useState<PipelineRow | null>(null)
+  const [syncVapiLoading, setSyncVapiLoading] = useState(false)
+  const [syncVapiMessage, setSyncVapiMessage] = useState<string | null>(null)
+
+  async function handleSyncVapi() {
+    setSyncVapiMessage(null)
+    setSyncVapiLoading(true)
+    try {
+      const res = await fetch('/api/dashboard/sync-vapi', { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) {
+        setSyncVapiMessage(data?.error || 'Sync failed')
+        return
+      }
+      setSyncVapiMessage(data.imported > 0 ? `Imported ${data.imported} call(s) from Vapi.` : 'No new calls to import.')
+      await refreshData()
+    } catch {
+      setSyncVapiMessage('Sync failed')
+    } finally {
+      setSyncVapiLoading(false)
+    }
+  }
   const [editForm, setEditForm] = useState<Omit<PipelineRow, 'id'>>({
     time: '',
     caller: '',
@@ -50,7 +71,26 @@ export default function ConversationPipelineTable() {
 
   return (
     <section className="pipeline-section">
-      <h2>Conversation Pipeline</h2>
+      <div className="pipeline-section-header">
+        <h2>Conversation Pipeline</h2>
+        <div className="pipeline-actions pipeline-actions-inline">
+          <button
+            type="button"
+            className="refresh-btn"
+            onClick={handleSyncVapi}
+            disabled={syncVapiLoading}
+            aria-label="Import past calls from Vapi"
+          >
+            {syncVapiLoading ? 'Syncing…' : 'Sync from Vapi'}
+          </button>
+          <RefreshButton />
+          {syncVapiMessage && (
+            <span className="sync-vapi-message" style={{ marginLeft: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+              {syncVapiMessage}
+            </span>
+          )}
+        </div>
+      </div>
       <div className="pipeline-table-wrap">
         <table className="pipeline-table">
           <thead>
@@ -93,9 +133,6 @@ export default function ConversationPipelineTable() {
             )}
           </tbody>
         </table>
-      </div>
-      <div className="pipeline-actions">
-        <RefreshButton />
       </div>
 
       {editingRow && typeof document !== 'undefined' && createPortal(

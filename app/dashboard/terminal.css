@@ -574,15 +574,31 @@ select.auth-input {
   flex-direction: column;
 }
 
-.pipeline-section h2 {
+.pipeline-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.pipeline-section-header h2 {
   font-size: 14px;
   font-weight: 600;
   margin: 0;
-  padding: 10px 16px;
+  padding: 0;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
   letter-spacing: -0.02em;
-  flex-shrink: 0;
+}
+
+.pipeline-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border-top: none;
 }
 
 .pipeline-table-wrap {

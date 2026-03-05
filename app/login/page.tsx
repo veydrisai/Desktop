@@ -85,7 +85,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="auth-hint">
-          No public sign-up. Get an account from your admin. Demo: admin@voiceroi.local / admin
+          No public sign-up. Get an account from your admin.
         </p>
       </div>
     </div>
