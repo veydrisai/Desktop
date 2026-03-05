@@ -14,6 +14,8 @@ export async function GET() {
  * Uses the tenant's Vapi API key from tenant_credentials.
  */
 export async function POST(request: NextRequest) {
+  const debugMode = request.nextUrl.searchParams.get('debug') === process.env.SETUP_SECRET && !!process.env.SETUP_SECRET
+
   const cookie = request.cookies.get(SESSION_COOKIE)?.value
   const session = parseSessionCookie(cookie)
   if (!session) {
@@ -38,14 +40,22 @@ export async function POST(request: NextRequest) {
     SELECT vapi_api_key FROM tenant_credentials WHERE tenant_id = ${tenantId} LIMIT 1`
   const cred = (credRows as { vapi_api_key: string | null }[])[0]
   const vapiApiKey = cred?.vapi_api_key?.trim()
+
+  if (debugMode) {
+    return NextResponse.json({
+      debug: true,
+      userId: session.userId,
+      email: session.email,
+      tenantId,
+      credRowCount: (credRows as unknown[]).length,
+      hasVapiKey: !!vapiApiKey,
+      vapiKeyPrefix: vapiApiKey ? vapiApiKey.slice(0, 8) + '...' : null,
+    })
+  }
+
   if (!vapiApiKey) {
-    if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
-      console.log('[sync-vapi] no vapi key for tenant')
-    }
     return NextResponse.json(
-      {
-        error: 'Only your Vapi API key is needed for Sync. In Settings, paste your Private API key from dashboard.vapi.ai, click Save changes, then try Sync again.',
-      },
+      { error: 'Vapi API key not found. Go to Settings, paste your Private API key from dashboard.vapi.ai, and click Save changes.' },
       { status: 400 }
     )
   }
