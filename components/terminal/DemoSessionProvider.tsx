@@ -6,15 +6,12 @@ import {
   emptyRevenueSeries,
   emptyPipeline,
   defaultLastSync,
-  generateRefreshedKPIs,
-  generateRevenueSeries,
-  generatePipelineRows,
   type KPIs,
   type RevenuePoint,
   type PipelineRow,
 } from '@/lib/demoData'
 
-type ConnectStatus = 'idle' | 'connected' | 'unavailable'
+type ConnectStatus = 'idle' | 'connecting' | 'connected' | 'unavailable'
 
 type DemoSessionState = {
   loggedIn: boolean
@@ -59,7 +56,8 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
     connectStatus: 'idle',
   })
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (setStatus = true) => {
+    if (setStatus) setState((prev) => ({ ...prev, connectStatus: 'connecting' }))
     const data = await fetchDashboardData()
     if (data) {
       setState((prev) => ({
@@ -67,12 +65,15 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
         kpis: data.kpis,
         pipelineRows: data.pipelineRows,
         lastSync: data.lastSync,
+        ...(setStatus && { connectStatus: 'connected' as const }),
       }))
+    } else if (setStatus) {
+      setState((prev) => ({ ...prev, connectStatus: 'unavailable' }))
     }
   }, [])
 
   useEffect(() => {
-    if (state.loggedIn) loadDashboardData()
+    if (state.loggedIn) loadDashboardData(true)
   }, [state.loggedIn, loadDashboardData])
 
   const setLoggedIn = useCallback((value: boolean) => {
@@ -90,26 +91,27 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
   }, [])
 
   const connectDashboard = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      loggedIn: true,
-      connectStatus: Math.random() > 0.5 ? 'connected' : 'unavailable',
-    }))
-  }, [])
+    setState((prev) => ({ ...prev, loggedIn: true }))
+    loadDashboardData(true)
+  }, [loadDashboardData])
 
   const refreshData = useCallback(async () => {
+    setState((prev) => ({ ...prev, connectStatus: 'connecting' }))
     const data = await fetchDashboardData()
     if (data) {
-      setState((prev) => ({ ...prev, ...data }))
-      return
+      setState((prev) => ({
+        ...prev,
+        kpis: data.kpis,
+        pipelineRows: data.pipelineRows,
+        lastSync: data.lastSync,
+        connectStatus: 'connected',
+      }))
+    } else {
+      setState((prev) => ({
+        ...prev,
+        connectStatus: 'unavailable',
+      }))
     }
-    setState((prev) => ({
-      ...prev,
-      lastSync: 'Just now',
-      kpis: generateRefreshedKPIs(prev.kpis),
-      revenueSeries: generateRevenueSeries(10),
-      pipelineRows: generatePipelineRows(5 + Math.floor(Math.random() * 8)),
-    }))
   }, [])
 
   const updatePipelineRow = useCallback((id: string, updates: Partial<Omit<PipelineRow, 'id'>>) => {

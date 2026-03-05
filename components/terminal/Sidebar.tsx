@@ -33,14 +33,17 @@ export default function Sidebar() {
         <p className="api-session-help">
           Connects your dashboard to your voice/CRM backend. Configure in Settings.
         </p>
-        <button type="button" className="connect-btn" onClick={connectDashboard}>
-          Connect Dashboard
+        <button type="button" className="connect-btn" onClick={connectDashboard} disabled={connectStatus === 'connecting'}>
+          {connectStatus === 'connecting' ? 'Connecting…' : 'Connect Dashboard'}
         </button>
+        {connectStatus === 'connecting' && (
+          <p className="connect-status">Connecting to backend…</p>
+        )}
         {connectStatus === 'connected' && (
           <p className="connect-status connected">Connected</p>
         )}
         {connectStatus === 'unavailable' && (
-          <p className="connect-status">Backend unavailable</p>
+          <p className="connect-status">Backend unavailable. Check you’re logged in and try again.</p>
         )}
       </div>
 

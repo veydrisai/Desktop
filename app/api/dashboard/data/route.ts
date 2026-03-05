@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseSessionCookie, SESSION_COOKIE } from '@/lib/auth'
 import { getSql } from '@/lib/db'
-import { getTenantByUserId } from '@/lib/db-helpers'
+import { getOrCreateTenant, getTenantByUserId } from '@/lib/db-helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,20 +12,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const tenant = await getTenantByUserId(session.userId)
+  let tenant = await getTenantByUserId(session.userId)
   if (!tenant) {
-    return NextResponse.json({
-      kpis: {
-        dailyCallVolume: 0,
-        confirmedBookings: 0,
-        projectedRevenue: 0,
-        weeklyCallVolume: 0,
-        weeklySalesYield: 0,
-        monthlyGrossYield: 0,
-      },
-      pipelineRows: [],
-      lastSync: 'No data yet',
+    const tenantId = await getOrCreateTenant({
+      userId: session.userId,
+      email: session.email,
+      role: session.role,
+      onboardingComplete: session.onboardingComplete,
+      allowedModules: session.allowedModules,
     })
+    tenant = await getTenantByUserId(session.userId)
+    if (!tenant) {
+      return NextResponse.json({
+        kpis: {
+          dailyCallVolume: 0,
+          confirmedBookings: 0,
+          projectedRevenue: 0,
+          weeklyCallVolume: 0,
+          weeklySalesYield: 0,
+          monthlyGrossYield: 0,
+        },
+        pipelineRows: [],
+        lastSync: 'No data yet',
+      })
+    }
   }
 
   const sql = getSql()

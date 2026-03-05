@@ -74,10 +74,11 @@ export default function SettingsPage() {
         body: JSON.stringify(keys),
       })
       if (!res.ok) {
-        setMessage('Failed to save')
+        const err = await res.json().catch(() => ({}))
+        setMessage(err?.error || 'Failed to save. Check you’re logged in.')
         return
       }
-      setMessage('Saved. Changes apply to your next connection.')
+      setMessage('Saved. Your API keys are stored. Use “Connect Dashboard” or “Sync from Vapi” to load data.')
     } catch {
       setMessage('Something went wrong')
     } finally {
