@@ -3,6 +3,7 @@ import { SessionProvider } from '@/contexts/SessionContext'
 import { DemoSessionProvider } from '@/components/terminal/DemoSessionProvider'
 import { SessionGuard } from '@/components/terminal/SessionGuard'
 import DashboardShell from '@/components/terminal/DashboardShell'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export default function DashboardLayout({
   children,
@@ -12,9 +13,11 @@ export default function DashboardLayout({
   return (
     <SessionProvider>
       <SessionGuard>
-        <DemoSessionProvider initialLoggedIn>
-          <DashboardShell>{children}</DashboardShell>
-        </DemoSessionProvider>
+        <ErrorBoundary>
+          <DemoSessionProvider initialLoggedIn>
+            <DashboardShell>{children}</DashboardShell>
+          </DemoSessionProvider>
+        </ErrorBoundary>
       </SessionGuard>
     </SessionProvider>
   )

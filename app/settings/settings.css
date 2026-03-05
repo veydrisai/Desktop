@@ -69,7 +69,8 @@
   font-size: 14px;
 }
 
-.settings-field .auth-input:focus {
+.settings-field .auth-input:focus,
+.settings-field .auth-input:focus-visible {
   outline: none;
   border-color: var(--green-accent);
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
@@ -110,6 +111,18 @@
 
 .settings-link:hover {
   text-decoration: underline;
+}
+
+.settings-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--green-accent);
+  border-radius: 4px;
+}
+
+.settings-links-summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--green-accent);
+  border-radius: 4px;
 }
 
 .settings-link-note {

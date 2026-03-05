@@ -76,7 +76,8 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.auth-input:focus {
+.auth-input:focus,
+.auth-input:focus-visible {
   outline: none;
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
@@ -111,6 +112,11 @@
 
 .auth-submit:active:not(:disabled) {
   transform: scale(0.98);
+}
+
+.auth-submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #22c55e;
 }
 
 .auth-submit:disabled {
