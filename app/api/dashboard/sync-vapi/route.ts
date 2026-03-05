@@ -82,12 +82,15 @@ export async function POST(request: NextRequest) {
     })
     if (!res.ok) {
       const text = await res.text()
-      if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
-        console.log('[sync-vapi] Vapi API error:', res.status, text.slice(0, 100))
-      }
-      const msg = res.status === 404
-        ? 'Vapi list-calls endpoint not found. Check Vapi API key (use Private key from dashboard) and their docs.'
-        : `Vapi API error: ${res.status}`
+      let vapiMsg = ''
+      try { vapiMsg = JSON.parse(text)?.message || JSON.parse(text)?.error || text.slice(0, 200) } catch { vapiMsg = text.slice(0, 200) }
+      const msg = res.status === 401
+        ? 'Vapi rejected the API key (401). Make sure you are using your Private API key from dashboard.vapi.ai → Settings → API Keys — not the public key.'
+        : res.status === 400
+        ? `Vapi bad request (400): ${vapiMsg}`
+        : res.status === 404
+        ? 'Vapi list-calls endpoint not found. Check your Private API key.'
+        : `Vapi API error ${res.status}: ${vapiMsg}`
       return NextResponse.json({ error: msg }, { status: 502 })
     }
     vapiCalls = await res.json()
