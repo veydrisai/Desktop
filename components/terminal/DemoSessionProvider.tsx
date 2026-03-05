@@ -36,6 +36,26 @@ type FetchResult =
   | { ok: true; kpis: KPIs; pipelineRows: PipelineRow[]; lastSync: string }
   | { ok: false; status: number; message: string }
 
+const HINT_MESSAGES: Record<string, string> = {
+  not_logged_in: 'Please log in again.',
+  db_error: 'Database not configured or error. Check server DATABASE_URL.',
+  missing_vapi_key: 'Vapi API key not set. Add it in Settings and save.',
+  no_tenant: 'Save your API keys in Settings first.',
+  ok: '',
+}
+
+async function fetchConnectionHint(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/debug/connection', { credentials: 'include' })
+    if (!res.ok) return null
+    const data = await res.json()
+    const hint = data?.hint as string
+    return hint && HINT_MESSAGES[hint] ? HINT_MESSAGES[hint] : null
+  } catch {
+    return null
+  }
+}
+
 async function fetchDashboardData(): Promise<FetchResult> {
   try {
     const res = await fetch('/api/dashboard/data', { credentials: 'include' })
@@ -78,10 +98,11 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
         ...(setStatus && { connectStatus: 'connected' as const, backendError: null }),
       }))
     } else if (setStatus) {
+      const hintMessage = await fetchConnectionHint()
       setState((prev) => ({
         ...prev,
         connectStatus: 'unavailable',
-        backendError: result.message,
+        backendError: hintMessage || result.message,
       }))
     }
   }, [])
@@ -123,10 +144,11 @@ export function DemoSessionProvider({ children, initialLoggedIn = false }: { chi
         backendError: null,
       }))
     } else {
+      const hintMessage = await fetchConnectionHint()
       setState((prev) => ({
         ...prev,
         connectStatus: 'unavailable',
-        backendError: result.message,
+        backendError: hintMessage || result.message,
       }))
     }
   }, [])

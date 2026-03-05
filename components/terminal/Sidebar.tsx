@@ -24,7 +24,7 @@ export default function Sidebar() {
         <div className="sidebar-user">
           <span className="sidebar-user-email">{session.email}</span>
           <button type="button" className="session-pill" onClick={logout} disabled={isLoggingOut}>
-            {isLoggingOut ? 'Logging out…' : 'Log out'}
+            {isLoggingOut ? 'Logging out...' : 'Log out'}
           </button>
         </div>
       )}
@@ -34,10 +34,10 @@ export default function Sidebar() {
           Connects your dashboard to your voice/CRM backend. Configure in Settings.
         </p>
         <button type="button" className="connect-btn" onClick={connectDashboard} disabled={connectStatus === 'connecting'}>
-          {connectStatus === 'connecting' ? 'Connecting…' : 'Connect Dashboard'}
+          {connectStatus === 'connecting' ? 'Connecting...' : 'Connect Dashboard'}
         </button>
         {connectStatus === 'connecting' && (
-          <p className="connect-status">Connecting to backend…</p>
+          <p className="connect-status">Connecting to backend...</p>
         )}
         {connectStatus === 'connected' && (
           <p className="connect-status connected">Connected</p>

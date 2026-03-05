@@ -18,7 +18,7 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="terminal terminal-loading">
-        <p>Loading…</p>
+        <p>Loading...</p>
       </div>
     )
   }
@@ -26,7 +26,7 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
   if (session?.role === 'client' && !session.onboardingComplete) {
     return (
       <div className="terminal terminal-loading">
-        <p>Redirecting…</p>
+        <p>Redirecting...</p>
       </div>
     )
   }

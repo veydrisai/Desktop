@@ -5,10 +5,18 @@ import { getOrCreateTenant, getTenantByUserId } from '@/lib/db-helpers'
 
 export const dynamic = 'force-dynamic'
 
+const debugLog = (msg: string) => {
+  if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+    console.log(`[dashboard/data] ${msg}`)
+  }
+}
+
 export async function GET(request: NextRequest) {
+  try {
   const cookie = request.cookies.get(SESSION_COOKIE)?.value
   const session = parseSessionCookie(cookie)
   if (!session) {
+    debugLog('unauthenticated')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -47,24 +55,24 @@ export async function GET(request: NextRequest) {
   const monthStart = new Date(now)
   monthStart.setDate(monthStart.getDate() - 30)
 
-  const [dailyCalls] = (await sql`
-    SELECT COUNT(*)::int AS c FROM calls
-    WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart}`) as { c: number }[]
-  const [dailyBookings] = (await sql`
-    SELECT COUNT(*)::int AS c, COALESCE(SUM(value_cents), 0)::int AS rev FROM bookings
-    WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart} AND status != 'cancelled'`) as { c: number; rev: number }[]
-  const [weeklyCalls] = (await sql`
-    SELECT COUNT(*)::int AS c FROM calls
-    WHERE tenant_id = ${tenantId} AND created_at >= ${weekStart.toISOString()}`) as { c: number }[]
-  const [weeklyBookings] = (await sql`
-    SELECT COUNT(*)::int AS c FROM bookings
-    WHERE tenant_id = ${tenantId} AND created_at >= ${weekStart.toISOString()} AND status != 'cancelled'`) as { c: number }[]
-  const [monthlyCalls] = (await sql`
-    SELECT COUNT(*)::int AS c FROM calls
-    WHERE tenant_id = ${tenantId} AND created_at >= ${monthStart.toISOString()}`) as { c: number }[]
-  const [monthlyBookings] = (await sql`
-    SELECT COUNT(*)::int AS c FROM bookings
-    WHERE tenant_id = ${tenantId} AND created_at >= ${monthStart.toISOString()} AND status != 'cancelled'`) as { c: number }[]
+  const weekStartIso = weekStart.toISOString()
+  const monthStartIso = monthStart.toISOString()
+
+  const [dailyCallsRows, dailyBookingsRows, weeklyCallsRows, weeklyBookingsRows, monthlyCallsRows, monthlyBookingsRows] = await Promise.all([
+    sql`SELECT COUNT(*)::int AS c FROM calls WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart}`,
+    sql`SELECT COUNT(*)::int AS c, COALESCE(SUM(value_cents), 0)::int AS rev FROM bookings WHERE tenant_id = ${tenantId} AND created_at >= ${todayStart} AND status != 'cancelled'`,
+    sql`SELECT COUNT(*)::int AS c FROM calls WHERE tenant_id = ${tenantId} AND created_at >= ${weekStartIso}`,
+    sql`SELECT COUNT(*)::int AS c FROM bookings WHERE tenant_id = ${tenantId} AND created_at >= ${weekStartIso} AND status != 'cancelled'`,
+    sql`SELECT COUNT(*)::int AS c FROM calls WHERE tenant_id = ${tenantId} AND created_at >= ${monthStartIso}`,
+    sql`SELECT COUNT(*)::int AS c FROM bookings WHERE tenant_id = ${tenantId} AND created_at >= ${monthStartIso} AND status != 'cancelled'`,
+  ])
+
+  const dailyCalls = (dailyCallsRows as { c: number }[])[0]
+  const dailyBookings = (dailyBookingsRows as { c: number; rev: number }[])[0]
+  const weeklyCalls = (weeklyCallsRows as { c: number }[])[0]
+  const weeklyBookings = (weeklyBookingsRows as { c: number }[])[0]
+  const monthlyCalls = (monthlyCallsRows as { c: number }[])[0]
+  const monthlyBookings = (monthlyBookingsRows as { c: number }[])[0]
 
   const dailyCallVolume = dailyCalls?.c ?? 0
   const confirmedBookings = dailyBookings?.c ?? 0
@@ -103,4 +111,8 @@ export async function GET(request: NextRequest) {
     pipelineRows,
     lastSync,
   })
+  } catch (err) {
+    debugLog('db error')
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
 }

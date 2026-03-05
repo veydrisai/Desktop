@@ -40,14 +40,27 @@ export function createSessionCookie(payload: SessionPayload): string {
   return `${encoded}.${sig}`
 }
 
+const debugLog = (msg: string) => {
+  if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+    console.log(`[auth] ${msg}`)
+  }
+}
+
 export function parseSessionCookie(cookie: string | undefined): SessionPayload | null {
-  if (!cookie) return null
+  if (!cookie) {
+    debugLog('cookie missing')
+    return null
+  }
   const [encoded, sig] = cookie.split('.')
-  if (!encoded || !sig || sign(encoded) !== sig) return null
+  if (!encoded || !sig || sign(encoded) !== sig) {
+    debugLog('cookie invalid (bad signature or format)')
+    return null
+  }
   try {
     const data = Buffer.from(encoded, 'base64url').toString('utf-8')
     return JSON.parse(data) as SessionPayload
   } catch {
+    debugLog('cookie invalid (decode/parse failed)')
     return null
   }
 }

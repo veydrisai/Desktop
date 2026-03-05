@@ -87,7 +87,7 @@ export default function ConversationPipelineTable() {
             disabled={syncVapiLoading}
             aria-label="Import past calls from Vapi"
           >
-            {syncVapiLoading ? 'Syncing…' : 'Sync from Vapi'}
+            {syncVapiLoading ? 'Syncing...' : 'Sync from Vapi'}
           </button>
           <RefreshButton />
           {syncVapiMessage && (

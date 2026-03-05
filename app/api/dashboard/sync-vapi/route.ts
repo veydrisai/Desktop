@@ -39,6 +39,9 @@ export async function POST(request: NextRequest) {
   const cred = (credRows as { vapi_api_key: string | null }[])[0]
   const vapiApiKey = cred?.vapi_api_key?.trim()
   if (!vapiApiKey) {
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+      console.log('[sync-vapi] no vapi key for tenant')
+    }
     return NextResponse.json(
       {
         error: 'Only your Vapi API key is needed for Sync. In Settings, paste your Private API key from dashboard.vapi.ai, click Save changes, then try Sync again.',
@@ -69,7 +72,9 @@ export async function POST(request: NextRequest) {
     })
     if (!res.ok) {
       const text = await res.text()
-      console.error('Vapi API error:', res.status, text)
+      if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+        console.log('[sync-vapi] Vapi API error:', res.status, text.slice(0, 100))
+      }
       const msg = res.status === 404
         ? 'Vapi list-calls endpoint not found. Check Vapi API key (use Private key from dashboard) and their docs.'
         : `Vapi API error: ${res.status}`
@@ -77,7 +82,9 @@ export async function POST(request: NextRequest) {
     }
     vapiCalls = await res.json()
   } catch (e) {
-    console.error('Vapi fetch error:', e)
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+      console.log('[sync-vapi] Vapi fetch error:', e)
+    }
     return NextResponse.json({ error: 'Failed to fetch from Vapi' }, { status: 502 })
   }
 

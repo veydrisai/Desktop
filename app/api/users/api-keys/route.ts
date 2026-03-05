@@ -3,6 +3,12 @@ import { parseSessionCookie, SESSION_COOKIE } from '@/lib/auth'
 import { getSql } from '@/lib/db'
 import { getOrCreateTenant, getTenantByUserId } from '@/lib/db-helpers'
 
+const debugLog = (msg: string) => {
+  if (process.env.NODE_ENV === 'development' || process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+    console.log(`[api-keys] ${msg}`)
+  }
+}
+
 export async function GET(request: NextRequest) {
   const cookie = request.cookies.get(SESSION_COOKIE)?.value
   const session = parseSessionCookie(cookie)
@@ -36,6 +42,7 @@ export async function PUT(request: NextRequest) {
   const cookie = request.cookies.get(SESSION_COOKIE)?.value
   const session = parseSessionCookie(cookie)
   if (!session) {
+    debugLog('unauthorized')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -61,5 +68,6 @@ export async function PUT(request: NextRequest) {
       webhook_secret = EXCLUDED.webhook_secret,
       updated_at = now()`
 
+  debugLog('saved')
   return NextResponse.json({ ok: true })
 }
