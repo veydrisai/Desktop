@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import '@/app/dashboard/terminal.css'
 import '@/app/admin/admin.css'
 import { SessionProvider } from '@/contexts/SessionContext'
@@ -11,8 +12,11 @@ import Sidebar from '@/components/terminal/Sidebar'
 import { MODULES_NAV, DEFAULT_CLIENT_MODULES } from '@/lib/moduleConfig'
 
 type Client = { id: string; email: string; onboardingComplete: boolean; allowedModules?: string[]; createdAt: string }
-
 type RevenueSettings = { defaultRevenuePerBooking?: number; currency?: string }
+type Conversation = {
+  id: string; time: string; caller: string; intent: string; outcome: string
+  revenue: number; durationSec: number; rawIntent: string; rawOutcome: string
+}
 
 export default function AdminPage() {
   const router = useRouter()
@@ -28,21 +32,22 @@ export default function AdminPage() {
   const [revenueCurrency, setRevenueCurrency] = useState('USD')
   const [revenueSaving, setRevenueSaving] = useState(false)
   const [revenueMessage, setRevenueMessage] = useState<string | null>(null)
+  const [pipelineClientId, setPipelineClientId] = useState<string>('')
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [pipelineLoading, setPipelineLoading] = useState(false)
+  const [editingConv, setEditingConv] = useState<Conversation | null>(null)
+  const [editForm, setEditForm] = useState({ intent: '', outcome: '', revenue: 0 })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editMessage, setEditMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   function toggleModule(id: string) {
-    setModules((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
-    )
+    setModules((prev) => prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id])
   }
 
   function loadClientRevenue(clientId: string) {
     setSelectedClientId(clientId)
     setRevenueMessage(null)
-    if (!clientId) {
-      setRevenueDefault('')
-      setRevenueCurrency('USD')
-      return
-    }
+    if (!clientId) { setRevenueDefault(''); setRevenueCurrency('USD'); return }
     fetch(`/api/admin/clients/${clientId}/revenue-settings`, { credentials: 'include' })
       .then((r) => r.json())
       .then((data: { settings?: RevenueSettings }) => {
@@ -69,11 +74,7 @@ export default function AdminPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setRevenueMessage(data?.error || 'Failed to save')
-        return
-      }
-      setRevenueMessage('Revenue settings saved for this client.')
+      setRevenueMessage(!res.ok ? (data?.error || 'Failed to save') : 'Revenue settings saved for this client.')
     } catch {
       setRevenueMessage('Something went wrong')
     } finally {
@@ -81,19 +82,57 @@ export default function AdminPage() {
     }
   }
 
+  function loadClientPipeline(clientId: string) {
+    setPipelineClientId(clientId)
+    setConversations([])
+    if (!clientId) return
+    setPipelineLoading(true)
+    fetch(`/api/admin/clients/${clientId}/conversations`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => { setConversations(data?.conversations ?? []) })
+      .catch(() => {})
+      .finally(() => setPipelineLoading(false))
+  }
+
+  function openEdit(conv: Conversation) {
+    setEditingConv(conv)
+    setEditForm({ intent: conv.rawIntent || conv.intent, outcome: conv.rawOutcome || conv.outcome, revenue: conv.revenue })
+    setEditMessage(null)
+  }
+
+  function closeEdit() { setEditingConv(null); setEditMessage(null) }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingConv || !pipelineClientId) return
+    setEditSaving(true)
+    setEditMessage(null)
+    try {
+      const res = await fetch(`/api/admin/clients/${pipelineClientId}/conversations/${editingConv.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ intent: editForm.intent, outcome: editForm.outcome, revenue: Number(editForm.revenue) }),
+      })
+      if (!res.ok) { setEditMessage({ text: 'Failed to save', ok: false }); return }
+      setConversations((prev) => prev.map((c) =>
+        c.id === editingConv.id
+          ? { ...c, rawIntent: editForm.intent, rawOutcome: editForm.outcome, revenue: Number(editForm.revenue), intent: editForm.intent, outcome: editForm.outcome }
+          : c
+      ))
+      setEditMessage({ text: 'Saved.', ok: true })
+      setTimeout(closeEdit, 800)
+    } catch {
+      setEditMessage({ text: 'Something went wrong', ok: false })
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   useEffect(() => {
     fetch('/api/admin/users', { credentials: 'include' })
-      .then((r) => {
-        if (r.status === 401) {
-          router.replace('/dashboard')
-          return null
-        }
-        return r.json()
-      })
-      .then((data) => {
-        if (data?.clients) setClients(data.clients)
-        setLoading(false)
-      })
+      .then((r) => { if (r.status === 401) { router.replace('/dashboard'); return null } return r.json() })
+      .then((data) => { if (data?.clients) setClients(data.clients); setLoading(false) })
       .catch(() => setLoading(false))
   }, [router])
 
@@ -109,15 +148,9 @@ export default function AdminPage() {
         body: JSON.stringify({ email, password, modules }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setMessage({ type: 'err', text: data?.error || 'Failed to create user' })
-        return
-      }
+      if (!res.ok) { setMessage({ type: 'err', text: data?.error || 'Failed to create user' }); return }
       const user = data?.user
-      if (!user) {
-        setMessage({ type: 'err', text: 'Invalid response from server' })
-        return
-      }
+      if (!user) { setMessage({ type: 'err', text: 'Invalid response from server' }); return }
       setMessage({ type: 'ok', text: `Created ${user.email}. Share these credentials with the client.` })
       setEmail('')
       setPassword('')
@@ -129,6 +162,8 @@ export default function AdminPage() {
     }
   }
 
+  const pipelineClient = clients.find((c) => c.id === pipelineClientId)
+
   return (
     <SessionProvider>
       <SessionGuard>
@@ -137,69 +172,38 @@ export default function AdminPage() {
             <Sidebar />
             <main className="terminal-main admin-main">
               <h1 className="admin-title">Client accounts</h1>
-              <p className="admin-desc">Create new client logins. They will be prompted to add API keys on first sign-in.</p>
+              <p className="admin-desc">Manage clients, revenue settings, and conversation pipelines.</p>
 
               <div className="admin-card liquid-card">
                 <h2 className="admin-card-title">Create new client</h2>
                 <form onSubmit={handleCreate} className="admin-form">
                   <label className="auth-label">Client email</label>
-                  <input
-                    type="email"
-                    className="auth-input"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="client@company.com"
-                    required
-                  />
+                  <input type="email" className="auth-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@company.com" required />
                   <label className="auth-label">Set password</label>
-                  <input
-                    type="password"
-                    className="auth-input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    minLength={6}
-                    required
-                  />
+                  <input type="password" className="auth-input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" minLength={6} required />
                   <div className="admin-modules">
                     <span className="auth-label">Packages &amp; modules</span>
                     <p className="admin-modules-hint">Choose which modules this client can access.</p>
                     {MODULES_NAV.map((m) => (
                       <label key={m.id} className="admin-module-check">
-                        <input
-                          type="checkbox"
-                          checked={modules.includes(m.id)}
-                          onChange={() => toggleModule(m.id)}
-                        />
+                        <input type="checkbox" checked={modules.includes(m.id)} onChange={() => toggleModule(m.id)} />
                         <span>{m.label}</span>
                       </label>
                     ))}
                   </div>
-                  {message && (
-                    <p className={message.type === 'ok' ? 'admin-msg-ok' : 'auth-error'} role="alert">
-                      {message.text}
-                    </p>
-                  )}
-                  <button type="submit" className="auth-submit liquid-btn" disabled={creating}>
-                    {creating ? 'Creating…' : 'Create account'}
-                  </button>
+                  {message && <p className={message.type === 'ok' ? 'admin-msg-ok' : 'auth-error'} role="alert">{message.text}</p>}
+                  <button type="submit" className="auth-submit liquid-btn" disabled={creating}>{creating ? 'Creating...' : 'Create account'}</button>
                 </form>
               </div>
 
               <div className="admin-card liquid-card">
                 <h2 className="admin-card-title">Existing clients</h2>
-                {loading ? (
-                  <p className="admin-muted">Loading…</p>
-                ) : clients.length === 0 ? (
-                  <p className="admin-muted">No client accounts yet.</p>
-                ) : (
+                {loading ? <p className="admin-muted">Loading...</p> : clients.length === 0 ? <p className="admin-muted">No client accounts yet.</p> : (
                   <ul className="admin-list">
                     {clients.map((c) => (
                       <li key={c.id} className="admin-list-item">
                         <span className="admin-list-email">{c.email}</span>
-                        <span className={`admin-list-badge ${c.onboardingComplete ? 'done' : 'pending'}`}>
-                          {c.onboardingComplete ? 'Onboarded' : 'Pending setup'}
-                        </span>
+                        <span className={`admin-list-badge ${c.onboardingComplete ? 'done' : 'pending'}`}>{c.onboardingComplete ? 'Onboarded' : 'Pending setup'}</span>
                       </li>
                     ))}
                   </ul>
@@ -207,51 +211,78 @@ export default function AdminPage() {
               </div>
 
               <div className="admin-card liquid-card">
-                <h2 className="admin-card-title">Manage client revenue</h2>
-                <p className="admin-desc">Set default revenue per booking and currency per client. Clients can also change their own in Settings.</p>
-                {clients.length === 0 ? (
-                  <p className="admin-muted">Create a client first.</p>
-                ) : (
+                <h2 className="admin-card-title">Manage client pipeline</h2>
+                <p className="admin-desc">View and edit any client conversation pipeline. Update revenue, intent, and outcome for each lead without logging into their account.</p>
+                {clients.length === 0 ? <p className="admin-muted">Create a client first.</p> : (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <label className="auth-label">Select client</label>
+                      <select className="auth-input" value={pipelineClientId} onChange={(e) => loadClientPipeline(e.target.value)}>
+                        <option value="">Select a client...</option>
+                        {clients.map((c) => <option key={c.id} value={c.id}>{c.email}</option>)}
+                      </select>
+                    </div>
+                    {pipelineClientId && (
+                      <>
+                        <p className="admin-muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                          {pipelineLoading ? 'Loading...' : `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''} for ${pipelineClient?.email ?? ''}`}
+                        </p>
+                        {!pipelineLoading && conversations.length === 0 ? (
+                          <p className="admin-muted">No conversations yet for this client.</p>
+                        ) : (
+                          <div className="pipeline-table-wrap" style={{ maxHeight: 400 }}>
+                            <table className="pipeline-table">
+                              <thead>
+                                <tr>
+                                  <th>Time</th>
+                                  <th>Caller</th>
+                                  <th>Intent</th>
+                                  <th>Outcome</th>
+                                  <th>Revenue</th>
+                                  <th className="pipeline-th-actions">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {conversations.map((conv) => (
+                                  <tr key={conv.id}>
+                                    <td>{conv.time}</td>
+                                    <td>{conv.caller}</td>
+                                    <td>{conv.intent}</td>
+                                    <td>{conv.outcome}</td>
+                                    <td>${conv.revenue.toLocaleString()}</td>
+                                    <td className="pipeline-td-actions">
+                                      <button type="button" className="pipeline-edit-btn" onClick={() => openEdit(conv)}>Edit</button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="admin-card liquid-card">
+                <h2 className="admin-card-title">Manage client revenue defaults</h2>
+                <p className="admin-desc">Set default revenue per booking per client.</p>
+                {clients.length === 0 ? <p className="admin-muted">Create a client first.</p> : (
                   <form onSubmit={handleSaveClientRevenue} className="admin-form">
                     <label className="auth-label">Client</label>
-                    <select
-                      className="auth-input"
-                      value={selectedClientId}
-                      onChange={(e) => loadClientRevenue(e.target.value)}
-                    >
-                      <option value="">Select a client…</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.email}</option>
-                      ))}
+                    <select className="auth-input" value={selectedClientId} onChange={(e) => loadClientRevenue(e.target.value)}>
+                      <option value="">Select a client...</option>
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.email}</option>)}
                     </select>
                     {selectedClientId && (
                       <>
                         <label className="auth-label">Default revenue per booking ($)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          className="auth-input"
-                          value={revenueDefault}
-                          onChange={(e) => setRevenueDefault(e.target.value)}
-                          placeholder="e.g. 150"
-                        />
+                        <input type="number" min={0} step={1} className="auth-input" value={revenueDefault} onChange={(e) => setRevenueDefault(e.target.value)} placeholder="e.g. 150" />
                         <label className="auth-label">Currency</label>
-                        <input
-                          type="text"
-                          className="auth-input"
-                          value={revenueCurrency}
-                          onChange={(e) => setRevenueCurrency(e.target.value)}
-                          placeholder="USD"
-                        />
-                        {revenueMessage && (
-                          <p className={revenueMessage.startsWith('Revenue') ? 'admin-msg-ok' : 'auth-error'} role="alert">
-                            {revenueMessage}
-                          </p>
-                        )}
-                        <button type="submit" className="auth-submit liquid-btn" disabled={revenueSaving}>
-                          {revenueSaving ? 'Saving…' : 'Save revenue for this client'}
-                        </button>
+                        <input type="text" className="auth-input" value={revenueCurrency} onChange={(e) => setRevenueCurrency(e.target.value)} placeholder="USD" />
+                        {revenueMessage && <p className={revenueMessage.startsWith('Revenue') ? 'admin-msg-ok' : 'auth-error'} role="alert">{revenueMessage}</p>}
+                        <button type="submit" className="auth-submit liquid-btn" disabled={revenueSaving}>{revenueSaving ? 'Saving...' : 'Save revenue for this client'}</button>
                       </>
                     )}
                   </form>
@@ -259,6 +290,39 @@ export default function AdminPage() {
               </div>
             </main>
           </div>
+
+          {editingConv && typeof document !== 'undefined' && createPortal(
+            <div className="pipeline-modal-backdrop pipeline-modal-backdrop-top" onClick={closeEdit} aria-hidden>
+              <div className="pipeline-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                <div className="pipeline-modal-header">
+                  <h3 className="pipeline-modal-title">Edit lead</h3>
+                  <p className="pipeline-modal-desc">{editingConv.caller} &middot; {editingConv.time}</p>
+                </div>
+                <form onSubmit={handleSaveEdit}>
+                  <div className="pipeline-modal-form">
+                    <label className="pipeline-modal-field">
+                      <span className="pipeline-modal-label">Intent</span>
+                      <input type="text" className="pipeline-modal-input" value={editForm.intent} onChange={(e) => setEditForm((f) => ({ ...f, intent: e.target.value }))} placeholder="e.g. Booked, Inquiry" />
+                    </label>
+                    <label className="pipeline-modal-field">
+                      <span className="pipeline-modal-label">Outcome</span>
+                      <input type="text" className="pipeline-modal-input" value={editForm.outcome} onChange={(e) => setEditForm((f) => ({ ...f, outcome: e.target.value }))} placeholder="e.g. Booked, Callback" />
+                    </label>
+                    <label className="pipeline-modal-field">
+                      <span className="pipeline-modal-label">Revenue ($)</span>
+                      <input type="number" min={0} step={1} className="pipeline-modal-input" value={editForm.revenue} onChange={(e) => setEditForm((f) => ({ ...f, revenue: e.target.value === '' ? 0 : Number(e.target.value) }))} placeholder="0" />
+                    </label>
+                    {editMessage && <p className={editMessage.ok ? 'admin-msg-ok' : 'auth-error'} style={{ margin: 0 }}>{editMessage.text}</p>}
+                  </div>
+                  <div className="pipeline-modal-buttons">
+                    <button type="button" className="pipeline-modal-cancel" onClick={closeEdit}>Cancel</button>
+                    <button type="submit" className="pipeline-modal-save" disabled={editSaving}>{editSaving ? 'Saving...' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>,
+            document.body
+          )}
         </DemoSessionProvider>
       </SessionGuard>
     </SessionProvider>
