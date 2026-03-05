@@ -44,7 +44,7 @@ export default function Sidebar() {
         )}
         {connectStatus === 'unavailable' && (
           <p className="connect-status" role="alert">
-            {backendError || "Backend unavailable. Check you’re logged in and try again."
+            {backendError || 'Backend unavailable. Log in and try Connect again.'}
           </p>
         )}
       </div>
