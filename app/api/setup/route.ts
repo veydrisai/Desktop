@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
   for (const stmt of SCHEMA_STATEMENTS) {
     const label = stmt.trim().split('\n')[0].slice(0, 60)
     try {
-      await sql(stmt)
+      await sql.query(stmt)
       results.push(`OK: ${label}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
