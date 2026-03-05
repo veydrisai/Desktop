@@ -17,15 +17,21 @@ export default function ConversationPipelineTable() {
     setSyncVapiLoading(true)
     try {
       const res = await fetch('/api/dashboard/sync-vapi', { method: 'POST', credentials: 'include' })
-      const data = await res.json()
+      let data: { error?: string; imported?: number }
+      try {
+        data = await res.json()
+      } catch {
+        data = {}
+      }
       if (!res.ok) {
-        setSyncVapiMessage(data?.error || 'Sync failed')
+        const msg = data?.error || (res.status === 404 ? 'Sync endpoint not found (404). Redeploy the app from Vercel.' : `Sync failed (${res.status})`)
+        setSyncVapiMessage(msg)
         return
       }
-      setSyncVapiMessage(data.imported > 0 ? `Imported ${data.imported} call(s) from Vapi.` : 'No new calls to import.')
+      setSyncVapiMessage(data.imported && data.imported > 0 ? `Imported ${data.imported} call(s) from Vapi.` : 'No new calls to import.')
       await refreshData()
     } catch {
-      setSyncVapiMessage('Sync failed')
+      setSyncVapiMessage('Sync failed (network or server error)')
     } finally {
       setSyncVapiLoading(false)
     }
