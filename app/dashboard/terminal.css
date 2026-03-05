@@ -1275,38 +1275,44 @@ select.auth-input {
 @media (max-width: 768px) {
   .terminal {
     flex-direction: column;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     height: auto;
     min-height: 100vh;
   }
 
+  /* Sidebar becomes a compact top bar */
   .terminal-sidebar {
     width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
-    overflow-x: auto;
   }
 
+  /* Top row: logo + logout */
   .terminal-logo {
     font-size: 15px;
-    padding: 0;
-    flex-shrink: 0;
+    padding: 12px 16px 0;
   }
 
   .sidebar-user {
     flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    padding: 0;
-    flex-shrink: 0;
+    padding: 6px 16px 10px;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .sidebar-user-email {
+    font-size: 12px;
+  }
+
+  /* Nav becomes horizontal scrollable tab strip */
+  .modules-title {
     display: none;
   }
 
@@ -1314,56 +1320,85 @@ select.auth-input {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
-    gap: 2px;
-    padding: 3px;
-    flex: 1;
-    min-width: 0;
+    overflow-y: hidden;
+    gap: 0;
+    padding: 6px 8px;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sidebar-nav-group::-webkit-scrollbar {
+    display: none;
   }
 
   .sidebar-nav-link {
     white-space: nowrap;
-    padding: 8px 10px;
+    padding: 7px 12px;
     font-size: 13px;
+    border-radius: 8px;
+  }
+
+  /* Hide sidebar-only elements not needed on mobile */
+  .api-card {
+    display: none;
   }
 
   .sidebar-badge {
     display: none;
   }
 
-  .modules-title {
-    display: none;
-  }
-
-  .api-card {
-    display: none;
-  }
-
+  /* Main content area */
   .terminal-main {
-    padding: 12px;
-    overflow: auto;
+    padding: 12px 14px;
+    overflow: visible;
     flex: unset;
+    height: auto;
     min-height: 0;
+    gap: 12px;
   }
 
   .kpi-row {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 
   .main-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .cards-row {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* Pipeline table scrolls horizontally */
+  .pipeline-section {
+    flex: unset;
+    overflow: hidden;
   }
 
   .pipeline-table-wrap {
     padding-right: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .pipeline-table {
     font-size: 12px;
-    min-width: 520px;
+    min-width: 480px;
+  }
+
+  .pipeline-section-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .revenue-hero-value {
+    font-size: 22px;
   }
 }
 

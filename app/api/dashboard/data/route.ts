@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     time: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     caller: r.caller ?? 'Unknown',
     intent: labelIntent(r.intent),
-    outcome: labelOutcome(r.outcome),
+    outcome: labelOutcome(r.outcome, r.intent),
     revenue: Math.round((r.revenue_cents ?? 0) / 100),
   }))
 
