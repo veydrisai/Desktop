@@ -1,19 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const EMPTY_DATA = {
-  totalConversations: 0,
-  avgDuration: '0:00',
-  intentMatchRate: 0,
-  byOutcome: [] as { outcome: string; count: number; pct: number }[],
-  topIntents: [] as { intent: string; count: number }[],
+type AnalyticsData = {
+  total: number
+  avgDuration: string
+  byOutcome: { outcome: string; count: number; pct: number }[]
+  topIntents: { intent: string; count: number }[]
 }
 
 export default function ConversationAnalyticsPage() {
   const [range, setRange] = useState<'7d' | '30d'>('7d')
-  const data = EMPTY_DATA
-  const hasData = data.totalConversations > 0 || data.byOutcome.length > 0 || data.topIntents.length > 0
+  const [data, setData] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/dashboard/analytics?range=${range}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [range])
+
+  const hasData = (data?.total ?? 0) > 0 || (data?.byOutcome?.length ?? 0) > 0 || (data?.topIntents?.length ?? 0) > 0
 
   return (
     <div className="module-page">
@@ -28,10 +37,17 @@ export default function ConversationAnalyticsPage() {
         </div>
       </header>
 
-      {!hasData ? (
+      {loading ? (
+        <div className="analytics-loading">
+          <div className="cards-row">
+            {[0,1,2].map(i => <div key={i} className="ios-card skeleton-card" />)}
+          </div>
+          <div className="ios-card section-card skeleton-card" style={{ height: 120 }} />
+        </div>
+      ) : !hasData ? (
         <div className="ios-card section-card" style={{ padding: 24 }}>
           <p className="section-description" style={{ margin: 0, color: 'var(--text-muted)' }}>
-            No analytics data yet. Connect Twilio and Vapi in Settings, then use Sync from Vapi on the dashboard to import calls. Data will appear here once conversations are in the system.
+            No analytics data yet. Add your Vapi API key in Settings, then use Sync from Vapi on the dashboard to import calls.
           </p>
         </div>
       ) : (
@@ -39,24 +55,24 @@ export default function ConversationAnalyticsPage() {
           <div className="cards-row">
             <div className="ios-card">
               <div className="ios-card-label">Total conversations</div>
-              <div className="ios-card-value">{data.totalConversations.toLocaleString()}</div>
+              <div className="ios-card-value">{(data?.total ?? 0).toLocaleString()}</div>
             </div>
             <div className="ios-card">
               <div className="ios-card-label">Avg. duration</div>
-              <div className="ios-card-value">{data.avgDuration}</div>
+              <div className="ios-card-value">{data?.avgDuration ?? '0:00'}</div>
             </div>
             <div className="ios-card accent">
-              <div className="ios-card-label">Intent match rate</div>
-              <div className="ios-card-value">{data.intentMatchRate}%</div>
+              <div className="ios-card-label">Outcomes tracked</div>
+              <div className="ios-card-value">{data?.byOutcome?.length ?? 0}</div>
             </div>
           </div>
 
-          {data.byOutcome.length > 0 && (
+          {(data?.byOutcome?.length ?? 0) > 0 && (
             <div className="ios-card section-card">
               <h2 className="section-title">Conversation breakdown by outcome</h2>
               <p className="section-description">Share of conversations by result for the selected period.</p>
               <ul className="ios-list outcome-list">
-                {data.byOutcome.map((row) => (
+                {data!.byOutcome.map((row) => (
                   <li key={row.outcome}>
                     <div className="outcome-row">
                       <span>{row.outcome}</span>
@@ -71,11 +87,11 @@ export default function ConversationAnalyticsPage() {
             </div>
           )}
 
-          {data.topIntents.length > 0 && (
+          {(data?.topIntents?.length ?? 0) > 0 && (
             <div className="ios-card section-card">
               <h2 className="section-title">Top intents</h2>
               <ul className="ios-list">
-                {data.topIntents.map((row) => (
+                {data!.topIntents.map((row) => (
                   <li key={row.intent}>
                     <span>{row.intent}</span>
                     <span className="ios-list-value">{row.count.toLocaleString()}</span>

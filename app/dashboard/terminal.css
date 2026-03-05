@@ -1202,3 +1202,66 @@ select.auth-input {
   min-width: 4px;
   transition: width 0.3s ease;
 }
+
+/* —— Skeleton / loading pulse —— */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-card {
+  min-height: 72px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  background: var(--bg-card) !important;
+}
+
+.analytics-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* —— Sync button spinner —— */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  border-top-color: var(--green-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.refresh-btn-loading {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+/* —— Sync status messages —— */
+.sync-status-msg {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  animation: fadeIn 0.2s ease;
+}
+
+.sync-status-ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green-accent);
+}
+
+.sync-status-err {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}

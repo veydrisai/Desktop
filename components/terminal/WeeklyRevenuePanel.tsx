@@ -3,31 +3,29 @@
 import { useDemoSession } from './DemoSessionProvider'
 
 export default function WeeklyRevenuePanel() {
-  const { lastSync, kpis } = useDemoSession()
-  const current = kpis.projectedRevenue
-  const lastWeek = Math.round((current || 0) * 0.88)
-  const change = lastWeek ? Math.round(((current - lastWeek) / lastWeek) * 100) : 0
+  const { lastSync, kpis, connectStatus } = useDemoSession()
+  const isLoading = connectStatus === 'connecting'
 
   return (
     <section className="revenue-panel">
       <header className="revenue-panel-header">
-        <h2>Weekly Revenue Performance</h2>
+        <h2>Weekly Performance</h2>
         <span className="revenue-panel-sync">Last sync: {lastSync}</span>
       </header>
-      <div className="revenue-hero">
-        <span className="revenue-hero-label">This week</span>
-        <span className="revenue-hero-value">${(current || 0).toLocaleString()}</span>
+      <div className={`revenue-hero${isLoading ? ' skeleton-pulse' : ''}`}>
+        <span className="revenue-hero-label">Today&apos;s revenue</span>
+        <span className="revenue-hero-value">${(kpis.projectedRevenue || 0).toLocaleString()}</span>
       </div>
       <div className="revenue-secondary">
         <div className="revenue-secondary-item">
-          <span className="revenue-secondary-label">Last week</span>
-          <span className="revenue-secondary-value">${lastWeek.toLocaleString()}</span>
+          <span className="revenue-secondary-label">Weekly calls</span>
+          <span className="revenue-secondary-value">{kpis.weeklyCallVolume.toLocaleString()}</span>
         </div>
         <div className="revenue-secondary-divider" aria-hidden />
         <div className="revenue-secondary-item">
-          <span className="revenue-secondary-label">Week over week</span>
-          <span className={`revenue-secondary-value revenue-secondary-change ${change >= 0 ? 'positive' : 'negative'}`}>
-            {change >= 0 ? '+' : ''}{change}%
+          <span className="revenue-secondary-label">Sales yield</span>
+          <span className={`revenue-secondary-value ${kpis.weeklySalesYield > 0 ? 'positive' : ''}`}>
+            {kpis.weeklySalesYield.toFixed(1)}%
           </span>
         </div>
       </div>

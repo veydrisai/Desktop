@@ -10,7 +10,7 @@ export default function ConversationPipelineTable() {
   const { pipelineRows, updatePipelineRow, refreshData } = useDemoSession()
   const [editingRow, setEditingRow] = useState<PipelineRow | null>(null)
   const [syncVapiLoading, setSyncVapiLoading] = useState(false)
-  const [syncVapiMessage, setSyncVapiMessage] = useState<string | null>(null)
+  const [syncVapiMessage, setSyncVapiMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   async function handleSyncVapi() {
     setSyncVapiMessage(null)
@@ -18,20 +18,17 @@ export default function ConversationPipelineTable() {
     try {
       const res = await fetch('/api/dashboard/sync-vapi', { method: 'POST', credentials: 'include' })
       let data: { error?: string; imported?: number }
-      try {
-        data = await res.json()
-      } catch {
-        data = {}
-      }
+      try { data = await res.json() } catch { data = {} }
       if (!res.ok) {
-        const msg = data?.error || (res.status === 404 ? 'Sync endpoint not found (404). Redeploy the app from Vercel.' : `Sync failed (${res.status})`)
-        setSyncVapiMessage(msg)
+        const msg = data?.error || (res.status === 404 ? 'Sync endpoint not found. Redeploy from Vercel.' : `Sync failed (${res.status})`)
+        setSyncVapiMessage({ text: msg, ok: false })
         return
       }
-      setSyncVapiMessage(data.imported && data.imported > 0 ? `Imported ${data.imported} call(s) from Vapi.` : 'No new calls to import.')
+      const imported = data.imported ?? 0
+      setSyncVapiMessage({ text: imported > 0 ? `Imported ${imported} call(s) from Vapi.` : 'Up to date — no new calls.', ok: true })
       await refreshData()
     } catch {
-      setSyncVapiMessage('Sync failed (network or server error)')
+      setSyncVapiMessage({ text: 'Sync failed — check your connection.', ok: false })
     } finally {
       setSyncVapiLoading(false)
     }
@@ -82,17 +79,19 @@ export default function ConversationPipelineTable() {
         <div className="pipeline-actions pipeline-actions-inline">
           <button
             type="button"
-            className="refresh-btn"
+            className={`refresh-btn${syncVapiLoading ? ' refresh-btn-loading' : ''}`}
             onClick={handleSyncVapi}
             disabled={syncVapiLoading}
             aria-label="Import past calls from Vapi"
           >
-            {syncVapiLoading ? 'Syncing...' : 'Sync from Vapi'}
+            {syncVapiLoading ? (
+              <><span className="btn-spinner" aria-hidden />Syncing…</>
+            ) : 'Sync from Vapi'}
           </button>
           <RefreshButton />
           {syncVapiMessage && (
-            <span className="sync-vapi-message" style={{ marginLeft: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-              {syncVapiMessage}
+            <span className={`sync-status-msg${syncVapiMessage.ok ? ' sync-status-ok' : ' sync-status-err'}`}>
+              {syncVapiMessage.text}
             </span>
           )}
         </div>
