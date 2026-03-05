@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   const limit = 100
   const createdAtGe = new Date()
-  createdAtGe.setDate(createdAtGe.getDate() - 90) // last 90 days
+  createdAtGe.setDate(createdAtGe.getDate() - 13) // last 13 days (plan limit)
   const url = new URL('https://api.vapi.ai/call')
   url.searchParams.set('limit', String(limit))
   url.searchParams.set('createdAtGe', createdAtGe.toISOString())
