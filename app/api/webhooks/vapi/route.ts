@@ -4,12 +4,15 @@ import { getSql } from '@/lib/db'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { callId, call, message } = body
+    const { message } = body
 
     if (message?.type !== 'end-of-call-report') {
       return NextResponse.json({ success: true, skipped: true })
     }
 
+    // Vapi puts call data inside message.call, not at the top level
+    const call = message?.call
+    const callId = call?.id
     const callSid = call?.metadata?.twilioCallSid || callId
     const intent = message?.analysis?.intent || 'unknown'
     const outcome = message?.analysis?.outcome || message?.endedReason || 'unknown'
